@@ -1,0 +1,57 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'master', url: 'https://github.com/Invesgood/P-Ingfo.git'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Bangun image dari folder client/
+                    dockerImage = docker.build("my-static-web:${env.BUILD_NUMBER}", "client")
+                }
+            }
+        }
+
+        stage('Stop Previous Container') {
+            steps {
+                script {
+                    sh 'docker stop my-static-web || true'
+                    sh 'docker rm my-static-web || true'
+                }
+            }
+        }
+
+        stage('Run Docker Container') {
+            steps {
+                script {
+                    sh "docker run -d -p 8089:80 --name my-static-web my-static-web:${env.BUILD_NUMBER}"
+                }
+            }
+        }
+
+        stage('Clean Up Old Images') {
+            steps {
+                script {
+                    sh 'docker image prune -f'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline completed!'
+        }
+        success {
+            echo 'Deployment successful! Web app is running on port 8089'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
