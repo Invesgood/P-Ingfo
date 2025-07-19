@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
-import axios from "axios";
 import { toast } from "react-hot-toast";
+
+import api from "../lib/axios.js";
 
 export const AddTaskPage = () => {
   const [title, setTitle] = useState("");
@@ -16,7 +17,7 @@ export const AddTaskPage = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post("http://localhost:3000/api/tasks/", {
+      await api.post("/tasks", {
         title,
         description,
         subject,

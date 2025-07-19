@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import toast from "react-hot-toast";
 import { Plus } from "lucide-react";
-import axios from "axios";
+
+import api from "../lib/axios.js";
 import TaskCard from "../components/TaskCard.jsx";
 
 const TasksPage = () => {
@@ -14,7 +15,7 @@ const TasksPage = () => {
     const fetchTasks = async () => {
       setLoading(true);
       try {
-        const response = await axios.get("http://localhost:3000/api/tasks/");
+        const response = await api.get("/tasks");
         setTasks(response.data);
         console.log("Tasks fetched successfully:", response.data);
       } catch (error) {
