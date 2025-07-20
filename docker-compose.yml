@@ -4,7 +4,7 @@ services:
   frontend:
     build: ./client
     ports:
-      - "80:80"
+      - "99:80"
   
   backend:
     build: ./server
