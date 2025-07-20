@@ -9,4 +9,4 @@ services:
   backend:
     build: ./server
     ports:
-      - "3000:3000"
+      - "98:3000"
