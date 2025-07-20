@@ -1,12 +1,71 @@
 version: '3.8'
 
 services:
-  frontend:
-    build: ./client
+  # Database Service
+  database:
+    image: mysql:8.0
+    container_name: app_database
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: your_database_name
+      MYSQL_USER: your_username
+      MYSQL_PASSWORD: your_password
     ports:
-      - "99:80"
-  
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - app-network
+
+  # Backend/Server Service
   backend:
-    build: ./server
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: app_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DB_HOST: database
+      DB_PORT: 3306
+      DB_NAME: your_database_name
+      DB_USER: your_username
+      DB_PASSWORD: your_password
+      JWT_SECRET: your_jwt_secret_key
+      PORT: 5000
     ports:
-      - "98:3000"
+      - "98:5000"
+    depends_on:
+      - database
+    networks:
+      - app-network
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+
+  # Frontend/Client Service
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: app_frontend
+    restart: unless-stopped
+    environment:
+      REACT_APP_API_URL: http://backend:5000/api
+    ports:
+      - "89:3000"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  db_data:
