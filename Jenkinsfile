@@ -1,95 +1,81 @@
 pipeline {
     agent any
-    
+
     environment {
         DOCKER_COMPOSE_FILE = 'docker-compose.yml'
-        PROJECT_NAME = 'your-app-name'
+        PROJECT_NAME = 'p-ingfo'
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                git branch: 'master', url: 'https://github.com/Invesgood/P-Ingfo.git'
             }
         }
-        
+
         stage('Environment Setup') {
             steps {
                 script {
-                    // Copy environment variables
-                    sh 'cp .env.example .env'
-                    
-                    // You can also use Jenkins credentials here
-                    withCredentials([
-                        string(credentialsId: 'db-password', variable: 'DB_PASSWORD'),
-                        string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')
-                    ]) {
-                        sh '''
-                            sed -i "s/your_password/${DB_PASSWORD}/" .env
-                            sed -i "s/your_very_secret_jwt_key_here/${JWT_SECRET}/" .env
-                        '''
-                    }
-                }
-            }
-        }
-        
-        stage('Stop Existing Services') {
-            steps {
-                script {
-                    sh 'docker-compose -p ${PROJECT_NAME} down || true'
-                }
-            }
-        }
-        
-        stage('Build and Deploy') {
-            steps {
-                script {
+                    // Buat file .env kalau belum ada
                     sh '''
-                        docker-compose -p ${PROJECT_NAME} build --no-cache
-                        docker-compose -p ${PROJECT_NAME} up -d
+                        if [ ! -f ".env" ]; then
+                            echo "DB_PASSWORD=defaultpass" >> .env
+                            echo "JWT_SECRET=defaultjwtsecret" >> .env
+                            echo "Created default .env file."
+                        else
+                            echo ".env already exists."
+                        fi
                     '''
                 }
             }
         }
-        
+
+        stage('Stop Existing Services') {
+            steps {
+                echo 'Stopping any existing containers...'
+                sh "docker-compose -p ${PROJECT_NAME} down || true"
+            }
+        }
+
+        stage('Build and Deploy') {
+            steps {
+                echo 'Building and starting services...'
+                sh """
+                    docker-compose -p ${PROJECT_NAME} build --no-cache
+                    docker-compose -p ${PROJECT_NAME} up -d
+                """
+            }
+        }
+
         stage('Health Check') {
             steps {
                 script {
-                    // Wait for services to start
-                    sh 'sleep 30'
-                    
-                    // Check if services are running
-                    sh '''
-                        docker-compose -p ${PROJECT_NAME} ps
-                        
-                        # Check backend health
-                        curl -f http://localhost:5000/health || exit 1
-                        
-                        # Check frontend
-                        curl -f http://localhost:3000 || exit 1
-                    '''
+                    echo 'Waiting for services to start...'
+                    sh 'sleep 15'
+
+                    echo 'Checking backend on port 98...'
+                    sh 'curl -f http://localhost:98/api/tasks || (echo "❌ Backend FAILED" && exit 1)'
+
+                    echo 'Checking frontend on port 99...'
+                    sh 'curl -f http://localhost:99 || (echo "❌ Frontend FAILED" && exit 1)'
                 }
             }
         }
     }
-    
+
     post {
         always {
-            script {
-                // Clean up build artifacts but keep running containers
-                sh 'docker system prune -f --volumes'
-            }
+            echo 'Cleaning up unused Docker volumes...'
+            sh 'docker system prune -f --volumes'
         }
-        
+
         failure {
-            script {
-                // On failure, show logs for debugging
-                sh 'docker-compose -p ${PROJECT_NAME} logs'
-            }
+            echo 'Pipeline failed. Showing docker logs...'
+            sh "docker-compose -p ${PROJECT_NAME} logs || true"
         }
-        
+
         success {
-            echo 'Deployment successful! 🎉'
+            echo '✅ Deployment successful! 🎉'
         }
     }
 }
